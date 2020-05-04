@@ -1,8 +1,8 @@
 #pragma once
 
 enum class TokenType {
-    SENDER_OPEN,
-    SENDER_CLOSE,
+    TRANSMITTER_OPEN,
+    TRANSMITTER_CLOSE,
     RECEIVER_OPEN,
     RECEIVER_CLOSE,
     ASSIGN_LEFT,
@@ -30,8 +30,8 @@ public:
 #include "tokens/AssignRight.h"
 #include "tokens/ReceiverClose.h"
 #include "tokens/ReceiverOpen.h"
-#include "tokens/SenderClose.h"
-#include "tokens/SenderOpen.h"
+#include "tokens/TransmitterClose.h"
+#include "tokens/TransmitterOpen.h"
 
 #include "tokens/Two.h"
 #include "tokens/Add.h"

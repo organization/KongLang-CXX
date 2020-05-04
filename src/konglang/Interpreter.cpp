@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <stack>
 
 #include "syntax/exceptions/InvalidSyntaxError.h"
 
@@ -66,51 +67,70 @@ void parseNumberExpression(std::string& input, std::string::size_type& i, std::v
     }
 }
 
-std::vector<Token>&& tokenize(std::string&& input) {
-    std::vector<Token> tokens;
+std::vector<std::vector<Token>>&& tokenize(std::string&& input) {
+    std::vector<std::vector<Token>> tokens;
+    std::vector<Token> lineTokens;
 
-    size_t senderCount = 0;
+    size_t transmitterCount = 0;
+    bool usingTransmitter = true;
     size_t receiverCount = 0;
+    bool usingReceiver = true;
     size_t loopCount = 0;
 
     for (std::string::size_type i = 0; i < input.size(); i++) {
         switch (input[i]) {
+            case '\n':
+                tokens.emplace_back(lineTokens);
+                lineTokens.clear();
+                usingReceiver = false;
+                usingTransmitter = false;
+                break;
             case ' ':
                 continue;
             case '<':
-                senderCount++;
-                tokens.emplace_back(SenderOpen());
-                parseNumberExpression(input, ++i, tokens, true, true);
+                if (usingTransmitter) {
+                    throw InvalidSyntaxError("Each command need to be separated by a newline character");
+                }
+
+                transmitterCount++;
+                usingTransmitter = true;
+                lineTokens.emplace_back(TransmitterOpen());
+                parseNumberExpression(input, ++i, lineTokens, true, true);
                 break;
             case '>':
-                if (senderCount <= 0) {
+                if (transmitterCount <= 0) {
                     throw InvalidSyntaxError("Unexpected character '>' (expected: '<' )");
                 }
-                senderCount--;
-                tokens.emplace_back(SenderClose());
+                transmitterCount--;
+                lineTokens.emplace_back(TransmitterClose());
                 break;
             case '(':
+                if (usingReceiver) {
+                    throw InvalidSyntaxError("Each command need to be separated by a newline character");
+                }
+
                 receiverCount++;
-                tokens.emplace_back(ReceiverOpen());
-                parseNumberExpression(input, ++i, tokens, false, true);
+                usingReceiver = true;
+                lineTokens.emplace_back(ReceiverOpen());
+                parseNumberExpression(input, ++i, lineTokens, false, true);
                 break;
             case ')':
                 if (receiverCount <= 0) {
                     throw InvalidSyntaxError("Unexpected character ')' (expected: '(' )");
                 }
                 receiverCount--;
-                tokens.emplace_back(ReceiverClose());
+                lineTokens.emplace_back(ReceiverClose());
                 break;
             case '}':
-                tokens.emplace_back(AssignRight());
+                lineTokens.emplace_back(AssignRight());
                 break;
             case '{':
-                tokens.emplace_back(AssignLeft());
+                lineTokens.emplace_back(AssignLeft());
                 break;
             case '[':
                 if (0 < i - 2 && input[i - 2] == '>') {
                     loopCount++;
-                    tokens.emplace_back(LoopOpen());
+                    lineTokens.emplace_back(LoopOpen());
                     break;
                 } else {
                     throw InvalidSyntaxError("Unexpected character '[' (expected: '<Number>' )");
@@ -122,21 +142,21 @@ std::vector<Token>&& tokenize(std::string&& input) {
                 loopCount--;
                 break;
             case '-':
-                tokens.emplace_back(Subtract());
+                lineTokens.emplace_back(Subtract());
                 goto PARSE_NUMBER_EXPRESSION;
             case '+':
-                tokens.emplace_back(Add());
+                lineTokens.emplace_back(Add());
                 goto PARSE_NUMBER_EXPRESSION;
             case '/':
-                tokens.emplace_back(Divide());
+                lineTokens.emplace_back(Divide());
                 goto PARSE_NUMBER_EXPRESSION;
             case '*':
-                tokens.emplace_back(Multiply());
+                lineTokens.emplace_back(Multiply());
                 goto PARSE_NUMBER_EXPRESSION;
             case '2':
-                tokens.emplace_back(Two());
+                lineTokens.emplace_back(Two());
                 PARSE_NUMBER_EXPRESSION:
-                    parseNumberExpression(input, ++i, tokens, false, false);
+                    parseNumberExpression(input, ++i, lineTokens, false, false);
                 break;
             default:
                 throw InvalidSyntaxError(std::string("Invalid character: ") + input[i]);
@@ -145,7 +165,7 @@ std::vector<Token>&& tokenize(std::string&& input) {
 
     if (receiverCount) {
         throw InvalidSyntaxError("The receiver was not closed properly");
-    } else if (senderCount) {
+    } else if (transmitterCount) {
         throw InvalidSyntaxError("The sender was not closed properly");
     } else if (loopCount) {
         throw InvalidSyntaxError("The loop was not closed properly");
@@ -154,9 +174,55 @@ std::vector<Token>&& tokenize(std::string&& input) {
     return std::move(tokens);
 }
 
-bool interpret(std::string&& input) {
-    std::unordered_map<int64_t, int64_t> virtualMemory;
-    std::vector<Token> parsedToken = tokenize(std::move(input));
+void calculateNumberExpression(std::vector<Token>&& parsedToken) {
 
-    return true;
+}
+
+void parse(std::vector<std::vector<Token>>&& parsedTokensList) {
+    std::unordered_map<int64_t, int64_t> virtualMemory;
+    int64_t number;
+
+    for (const auto& parsedTokens : parsedTokensList) {
+        int64_t value = 0;
+        for (size_t i = 0; i < parsedTokens.size(); i++) {
+            switch (parsedTokens[i].tokenType) {
+                case TokenType::TRANSMITTER_OPEN:
+                    break;
+                case TokenType::TRANSMITTER_CLOSE:
+                    break;
+                case TokenType::RECEIVER_OPEN:
+                    break;
+                case TokenType::RECEIVER_CLOSE:
+                    break;
+                case TokenType::ASSIGN_LEFT:
+                    break;
+                case TokenType::ASSIGN_RIGHT:
+                    break;
+                case TokenType::TWO:
+                    break;
+                case TokenType::ADD:
+                    break;
+                case TokenType::SUBTRACT:
+                    break;
+                case TokenType::MULTIPLY:
+                    break;
+                case TokenType::DIVIDE:
+                    break;
+                case TokenType::LOOP_OPEN:
+                    break;
+                case TokenType::LOOP_CLOSE:
+                    break;
+                case TokenType::STD_INPUT:
+                    break;
+                case TokenType::STD_OUTPUT:
+                    break;
+            }
+        }
+    }
+}
+
+void konglang::execute(std::string&& input) {
+    auto parsedToken = tokenize(std::move(input));
+
+    parse(std::move(parsedToken));
 }
