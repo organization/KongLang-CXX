@@ -5,13 +5,10 @@
 
 #include "syntax/exceptions/InvalidSyntaxError.h"
 
-void parseNumberLiteral(std::string& input, std::string::size_type& i, std::vector<Token>& tokens, bool isInput) {
-    while (i < input.size() - 1) {
-        switch (input[++i]) {
-            case 0x20:
-            case 0x0a:
-            case 0x0b:
-            case 0x0c:
+void parseNumberExpression(std::string& input, std::string::size_type& i, std::vector<Token>& tokens, bool isInput, bool isAddress) {
+    while (i < input.size()) {
+        switch (input[i]) {
+            case ' ':
                 i++;
                 continue;
             case '-':
@@ -45,13 +42,20 @@ void parseNumberLiteral(std::string& input, std::string::size_type& i, std::vect
                 i++;
                 continue;
             case '>':
-                if (!isInput) {
+                if (!isAddress && !isInput) {
                     throw InvalidSyntaxError(std::string("Invalid character: ") + input[i]);
                 }
                 i--;
                 return;
             case ')':
-                if (isInput) {
+                if (!isAddress && isInput) {
+                    throw InvalidSyntaxError(std::string("Invalid character: ") + input[i]);
+                }
+                i--;
+                return;
+            case '{':
+            case '}':
+                if (isAddress) {
                     throw InvalidSyntaxError(std::string("Invalid character: ") + input[i]);
                 }
                 i--;
@@ -62,7 +66,7 @@ void parseNumberLiteral(std::string& input, std::string::size_type& i, std::vect
     }
 }
 
-std::vector<Token>&& parse(std::string&& input) {
+std::vector<Token>&& tokenize(std::string&& input) {
     std::vector<Token> tokens;
 
     size_t senderCount = 0;
@@ -76,7 +80,7 @@ std::vector<Token>&& parse(std::string&& input) {
             case '<':
                 senderCount++;
                 tokens.emplace_back(SenderOpen());
-                parseNumberLiteral(input, i, tokens, true);
+                parseNumberExpression(input, ++i, tokens, true, true);
                 break;
             case '>':
                 if (senderCount <= 0) {
@@ -88,14 +92,14 @@ std::vector<Token>&& parse(std::string&& input) {
             case '(':
                 receiverCount++;
                 tokens.emplace_back(ReceiverOpen());
-                parseNumberLiteral(input, i, tokens, false);
+                parseNumberExpression(input, ++i, tokens, false, true);
                 break;
             case ')':
                 if (receiverCount <= 0) {
                     throw InvalidSyntaxError("Unexpected character ')' (expected: '(' )");
                 }
                 receiverCount--;
-                tokens.emplace_back(SenderClose());
+                tokens.emplace_back(ReceiverClose());
                 break;
             case '}':
                 tokens.emplace_back(AssignRight());
@@ -117,6 +121,23 @@ std::vector<Token>&& parse(std::string&& input) {
                 }
                 loopCount--;
                 break;
+            case '-':
+                tokens.emplace_back(Subtract());
+                goto PARSE_NUMBER_EXPRESSION;
+            case '+':
+                tokens.emplace_back(Add());
+                goto PARSE_NUMBER_EXPRESSION;
+            case '/':
+                tokens.emplace_back(Divide());
+                goto PARSE_NUMBER_EXPRESSION;
+            case '*':
+                tokens.emplace_back(Multiply());
+                goto PARSE_NUMBER_EXPRESSION;
+            case '2':
+                tokens.emplace_back(Two());
+                PARSE_NUMBER_EXPRESSION:
+                    parseNumberExpression(input, ++i, tokens, false, false);
+                break;
             default:
                 throw InvalidSyntaxError(std::string("Invalid character: ") + input[i]);
         }
@@ -135,7 +156,7 @@ std::vector<Token>&& parse(std::string&& input) {
 
 bool interpret(std::string&& input) {
     std::unordered_map<int64_t, int64_t> virtualMemory;
-    std::vector<Token> parsedToken = parse(std::move(input));
+    std::vector<Token> parsedToken = tokenize(std::move(input));
 
     return true;
 }

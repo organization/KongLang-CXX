@@ -2,7 +2,7 @@
 #include "konglang/Interpreter.h"
 
 int main() {
-    auto v = parse("(2 - 2) { 2 / 2");
+    auto v = tokenize("(2 - 2) { <2 - 2> + 2 + 2 / 2");
     for (auto a : v) {
         switch (a.tokenType) {
             case TokenType::SENDER_OPEN:
@@ -52,4 +52,5 @@ int main() {
                 break;
         }
     }
+    return 0;
 }

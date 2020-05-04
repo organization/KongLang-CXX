@@ -4,5 +4,5 @@
 #include <string>
 #include <vector>
 
-std::vector<Token>&& parse(std::string&& input);
+std::vector<Token>&& tokenize(std::string&& input);
 bool interpret(std::string&&);
